@@ -38,7 +38,7 @@ spec:
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/master']], // grpc ใช้ master
+                    branches: [[name: '*/master']],
                     userRemoteConfigs: [[url: "${REPO_A_URL}"]],
                     extensions: [
                         [$class: 'CloneOption', depth: 1, shallow: true, noTags: true]
@@ -100,7 +100,7 @@ spec:
                 dir('repoC') {
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: '*/main']],   // ✅ repo คุณใช้ main
+                        branches: [[name: '*/main']],
                         userRemoteConfigs: [[url: "${REPO_C_URL}"]]
                     ])
                 }
@@ -111,7 +111,6 @@ spec:
             steps {
                 sh '''
                     python3 repoC/doxygen_warning_parser.py ${WARNINGS_LOG}
-                    cp "${WARNINGS_LOG%.*}_parsed.csv" ${PARSED_CSV}
 
                     echo "--- CSV preview ---"
                     head -10 ${PARSED_CSV}
