@@ -24,8 +24,8 @@ spec:
     }
 
     environment {
-        REPO_A_URL     = 'https://github.com/Mellow/grpc.git'
-        REPO_C_URL     = 'https://github.com/Mellow/doxygen-warning-parser.git'
+        REPO_A_URL     = 'https://github.com/miindDotVacati0n/grpc.git'
+        REPO_C_URL     = 'https://github.com/miindDotVacati0n/doxygen.git'
         DOXYGEN_CFG    = 'Doxyfile'
         WARNINGS_LOG   = 'doxygen_warnings.log'
         OUTPUT_ARCHIVE = 'doc.tar.gz'
