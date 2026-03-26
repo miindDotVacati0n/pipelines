@@ -24,46 +24,69 @@ spec:
     }
 
     environment {
-        REPO_A_URL     = 'https://github.com/Mellow/grpc.git'
+        REPO_A_URL     = 'https://github.com/miindDotVacati0n/grpc.git'
         DOXYGEN_CFG    = 'Doxyfile'
         OUTPUT_ARCHIVE = 'doc.tar.gz'
     }
 
     stages {
         stage('Checkout RepoA') {
-            steps { git url: "${REPO_A_URL}", depth: 1 }
+            steps {
+                git url: "${REPO_A_URL}"
+            }
         }
+
         stage('Generate Doxygen config') {
-            steps { sh 'doxygen -g ${DOXYGEN_CFG}' }
+            steps {
+                sh 'doxygen -g ${DOXYGEN_CFG}'
+            }
         }
+
         stage('Adjust Doxygen config') {
             steps {
                 sh '''
-                    sed -i 's|^INPUT *=.*|INPUT = src|'           ${DOXYGEN_CFG}
+                    sed -i 's|^INPUT *=.*|INPUT = src|' ${DOXYGEN_CFG}
+
                     sed -i 's|^GENERATE_LATEX *=.*|GENERATE_LATEX = NO|' ${DOXYGEN_CFG}
                     sed -i 's|^GENERATE_RTF *=.*|GENERATE_RTF   = NO|'   ${DOXYGEN_CFG}
                     sed -i 's|^GENERATE_MAN *=.*|GENERATE_MAN   = NO|'   ${DOXYGEN_CFG}
                     sed -i 's|^GENERATE_XML *=.*|GENERATE_XML   = NO|'   ${DOXYGEN_CFG}
                     sed -i 's|^GENERATE_HTML *=.*|GENERATE_HTML  = YES|' ${DOXYGEN_CFG}
+
+                    echo "===== CONFIG CHECK ====="
                     grep -E "^(INPUT|GENERATE_)" ${DOXYGEN_CFG}
                 '''
             }
         }
+
         stage('Run Doxygen') {
-            steps { sh 'doxygen ${DOXYGEN_CFG}' }
+            steps {
+                sh 'doxygen ${DOXYGEN_CFG}'
+            }
         }
+
         stage('Pack output') {
-            steps { sh 'tar -czf ${OUTPUT_ARCHIVE} html/' }
+            steps {
+                sh 'tar -czf ${OUTPUT_ARCHIVE} html/'
+            }
         }
+
         stage('Archive artifact') {
             steps {
                 archiveArtifacts artifacts: "${OUTPUT_ARCHIVE}", fingerprint: true
             }
         }
     }
+
     post {
-        success { echo 'PipelineB SUCCESS ✅' }
-        failure { echo 'PipelineB FAILED ❌' }
-        cleanup { cleanWs() }
+        success {
+            echo 'PipelineB SUCCESS ✅'
+        }
+        failure {
+            echo 'PipelineB FAILED ❌'
+        }
+        cleanup {
+            cleanWs()
+        }
     }
 }
