@@ -30,9 +30,33 @@ spec:
     }
 
     stages {
-        stage('Checkout RepoA') {
+
+        stage('Checkout RepoA (Shallow)') {
             steps {
-                git url: "${REPO_A_URL}"
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],  // ถ้าใช้ main เปลี่ยนเป็น */main
+                    userRemoteConfigs: [[url: "${REPO_A_URL}"]],
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, shallow: true, noTags: true]
+                    ]
+                ])
+            }
+        }
+
+        stage('Verify Repo Structure') {
+            steps {
+                sh '''
+                    echo "===== ROOT FILES ====="
+                    ls -la
+
+                    echo "===== CHECK src folder ====="
+                    if [ -d "src" ]; then
+                        echo "src/ exists ✅"
+                    else
+                        echo "⚠️ src/ not found, fallback to current directory"
+                    fi
+                '''
             }
         }
 
@@ -45,7 +69,11 @@ spec:
         stage('Adjust Doxygen config') {
             steps {
                 sh '''
-                    sed -i 's|^INPUT *=.*|INPUT = src|' ${DOXYGEN_CFG}
+                    if [ -d "src" ]; then
+                        sed -i 's|^INPUT *=.*|INPUT = src|' ${DOXYGEN_CFG}
+                    else
+                        sed -i 's|^INPUT *=.*|INPUT = .|' ${DOXYGEN_CFG}
+                    fi
 
                     sed -i 's|^GENERATE_LATEX *=.*|GENERATE_LATEX = NO|' ${DOXYGEN_CFG}
                     sed -i 's|^GENERATE_RTF *=.*|GENERATE_RTF   = NO|'   ${DOXYGEN_CFG}
@@ -62,6 +90,20 @@ spec:
         stage('Run Doxygen') {
             steps {
                 sh 'doxygen ${DOXYGEN_CFG}'
+            }
+        }
+
+        stage('Verify Output') {
+            steps {
+                sh '''
+                    echo "===== OUTPUT CHECK ====="
+                    ls -la
+
+                    if [ ! -d "html" ]; then
+                        echo "❌ html/ not generated"
+                        exit 1
+                    fi
+                '''
             }
         }
 
