@@ -38,7 +38,7 @@ spec:
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/master']], // ถ้า repo ใช้ main → เปลี่ยน
+                    branches: [[name: '*/master']], // grpc ใช้ master
                     userRemoteConfigs: [[url: "${REPO_A_URL}"]],
                     extensions: [
                         [$class: 'CloneOption', depth: 1, shallow: true, noTags: true]
@@ -98,7 +98,11 @@ spec:
         stage('Checkout RepoC') {
             steps {
                 dir('repoC') {
-                    git url: "${REPO_C_URL}"
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],   // ✅ repo คุณใช้ main
+                        userRemoteConfigs: [[url: "${REPO_C_URL}"]]
+                    ])
                 }
             }
         }
