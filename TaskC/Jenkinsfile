@@ -33,29 +33,52 @@ spec:
     }
 
     stages {
-        stage('Checkout RepoA') {
-            steps { git url: "${REPO_A_URL}", depth: 1 }
+
+        stage('Checkout RepoA (Shallow)') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],
+                    userRemoteConfigs: [[url: "${REPO_A_URL}"]],
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, shallow: true, noTags: true]
+                    ]
+                ])
+            }
         }
+
         stage('Generate Doxygen config') {
-            steps { sh 'doxygen -g ${DOXYGEN_CFG}' }
+            steps {
+                sh 'doxygen -g ${DOXYGEN_CFG}'
+            }
         }
+
         stage('Adjust Doxygen config') {
             steps {
                 sh '''
-                    sed -i 's|^INPUT *=.*|INPUT = src|'                            ${DOXYGEN_CFG}
-                    sed -i 's|^GENERATE_LATEX *=.*|GENERATE_LATEX = NO|'           ${DOXYGEN_CFG}
-                    sed -i 's|^GENERATE_RTF *=.*|GENERATE_RTF   = NO|'             ${DOXYGEN_CFG}
-                    sed -i 's|^GENERATE_MAN *=.*|GENERATE_MAN   = NO|'             ${DOXYGEN_CFG}
-                    sed -i 's|^GENERATE_XML *=.*|GENERATE_XML   = NO|'             ${DOXYGEN_CFG}
-                    sed -i 's|^GENERATE_HTML *=.*|GENERATE_HTML  = YES|'           ${DOXYGEN_CFG}
-                    sed -i 's|^WARNINGS *=.*|WARNINGS            = YES|'           ${DOXYGEN_CFG}
+                    if [ -d "src" ]; then
+                        sed -i 's|^INPUT *=.*|INPUT = src|' ${DOXYGEN_CFG}
+                    else
+                        sed -i 's|^INPUT *=.*|INPUT = .|' ${DOXYGEN_CFG}
+                    fi
+
+                    sed -i 's|^GENERATE_LATEX *=.*|GENERATE_LATEX = NO|' ${DOXYGEN_CFG}
+                    sed -i 's|^GENERATE_RTF *=.*|GENERATE_RTF   = NO|'   ${DOXYGEN_CFG}
+                    sed -i 's|^GENERATE_MAN *=.*|GENERATE_MAN   = NO|'   ${DOXYGEN_CFG}
+                    sed -i 's|^GENERATE_XML *=.*|GENERATE_XML   = NO|'   ${DOXYGEN_CFG}
+                    sed -i 's|^GENERATE_HTML *=.*|GENERATE_HTML  = YES|' ${DOXYGEN_CFG}
+
+                    sed -i 's|^WARNINGS *=.*|WARNINGS = YES|' ${DOXYGEN_CFG}
                     sed -i 's|^WARN_IF_UNDOCUMENTED *=.*|WARN_IF_UNDOCUMENTED = YES|' ${DOXYGEN_CFG}
-                    sed -i 's|^WARN_IF_DOC_ERROR *=.*|WARN_IF_DOC_ERROR    = YES|' ${DOXYGEN_CFG}
+                    sed -i 's|^WARN_IF_DOC_ERROR *=.*|WARN_IF_DOC_ERROR = YES|' ${DOXYGEN_CFG}
                     sed -i 's|^WARN_LOGFILE *=.*|WARN_LOGFILE = doxygen_warnings.log|' ${DOXYGEN_CFG}
+
+                    echo "===== CONFIG CHECK ====="
                     grep -E "^(INPUT|GENERATE_|WARN)" ${DOXYGEN_CFG}
                 '''
             }
         }
+
         stage('Run Doxygen') {
             steps {
                 sh '''
@@ -65,33 +88,36 @@ spec:
                 '''
             }
         }
+
         stage('Pack HTML output') {
-            steps { sh 'tar -czf ${OUTPUT_ARCHIVE} html/' }
+            steps {
+                sh 'tar -czf ${OUTPUT_ARCHIVE} html/'
+            }
         }
+
         stage('Checkout RepoC') {
             steps {
-                dir('repoC') { git url: "${REPO_C_URL}" }
+                dir('repoC') {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        userRemoteConfigs: [[url: "${REPO_C_URL}"]]
+                    ])
+                }
             }
         }
-        stage('Install Python dependencies') {
-            steps {
-                sh '''
-                    [ -f repoC/requirements.txt ] \
-                        && pip3 install --user -r repoC/requirements.txt \
-                        || echo "No requirements.txt – skipping"
-                '''
-            }
-        }
+
         stage('Run Warning Parser') {
             steps {
                 sh '''
                     python3 repoC/doxygen_warning_parser.py ${WARNINGS_LOG}
-                    cp "${WARNINGS_LOG%.*}_parsed.csv" ${PARSED_CSV}
+
                     echo "--- CSV preview ---"
                     head -10 ${PARSED_CSV}
                 '''
             }
         }
+
         stage('Archive artifacts') {
             steps {
                 archiveArtifacts artifacts: "${OUTPUT_ARCHIVE}, ${PARSED_CSV}",
@@ -99,6 +125,7 @@ spec:
             }
         }
     }
+
     post {
         success { echo 'PipelineC SUCCESS ✅' }
         failure { echo 'PipelineC FAILED ❌' }
